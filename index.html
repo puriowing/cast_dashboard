@@ -1,0 +1,1011 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>【サンプル】単純集計・ランキング ダッシュボード</title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@3.7.0/dist/chart.min.js"></script>
+
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-chart-matrix@1.1.0/dist/chartjs-chart-matrix.min.js"></script>
+
+    <style>
+        :root {
+            /* --- カラースキーム (低彩度・洗練) --- */
+            --primary-color: #64748b;      /* キーカラー (Slate Blue) */
+            --primary-light: #f1f5f9;     /* キーカラー (Light Gray Blue) */
+            --primary-dark: #475569;      /* キーカラー (Dark Slate) */
+
+            --text-primary: #1e293b;      /* 基本テキスト (Near Black) */
+            --text-secondary: #475569;    /* サブテキスト (Dark Slate) */
+            --text-light: #64748b;        /* ライトテキスト (Slate Blue) */
+
+            --bg-color: #f8fafc;          /* 全体背景 (Light Gray) */
+            --card-bg: #ffffff;           /* カード背景 */
+            --border-color: #e2e8f0;      /* 罫線 (Lighter Gray) */
+
+            --positive-color: #10b981;    /* ポジティブ (Emerald Green) */
+            --negative-color: #f43f5e;    /* ネガティブ (Rose Red) */
+
+            --sidebar-bg: #1e293b;        /* サイドバー背景 (Near Black) */
+            --sidebar-text: #cbd5e1;      /* サイドバーテキスト (Light Slate) */
+            --sidebar-hover: #334155;
+            --sidebar-active: #64748b;      /* アクティブ (Slate Blue) */
+
+            /* --- グラフ用カラーパレット --- */
+            --chart-color-1: #64748b; /* primary */
+            --chart-color-2: #94a3b8; /* primaryLight adjusted */
+            --chart-color-3: #5eead4; /* teal lighter */
+            --chart-color-4: #7dd3fc; /* sky lighter */
+            --chart-color-5: #c4b5fd; /* purple lighter */
+            --chart-color-6: #fcd34d; /* amber lighter */
+            --chart-positive: #10b981; /* positive */
+            --chart-negative: #f43f5e; /* negative */
+            --chart-gray: #cbd5e1;    /* gray */
+        }
+
+        *, *::before, *::after {
+            box-sizing: border-box; /* Apply box-sizing globally */
+        }
+
+        html {
+           scroll-behavior: smooth;
+        }
+
+        body {
+            font-family: 'Inter', 'Noto Sans JP', sans-serif;
+            margin: 0;
+            background-color: var(--bg-color);
+            color: var(--text-primary);
+            /* display: flex; No longer using flex for body */
+            min-height: 100vh;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+
+        /* --- サイドナビゲーション --- */
+        .sidebar {
+            width: 250px; /* Fixed width */
+            background-color: var(--sidebar-bg);
+            color: var(--sidebar-text);
+            height: 100vh;
+            position: fixed; /* Fixed position */
+            top: 0;
+            left: 0;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 2px 0 10px rgba(0, 0, 0, 0.05);
+            z-index: 100;
+            overflow-y: auto;
+        }
+        .sidebar-header {
+            padding: 24px;
+            font-size: 1.4em;
+            font-weight: 600;
+            text-align: center;
+            background-color: #0f172a; /* Darker Sidebar Header */
+            letter-spacing: 0.5px;
+            flex-shrink: 0; /* Prevent header from shrinking */
+        }
+        .sidebar-nav {
+           flex-grow: 1; /* Allow nav to take remaining space */
+           overflow-y: auto; /* Allow nav scrolling */
+        }
+        .sidebar-nav .nav-tabs {
+            flex-direction: column;
+            border: none;
+            margin-top: 16px;
+        }
+        .sidebar-nav .nav-link {
+            display: flex;
+            align-items: center;
+            padding: 16px 24px;
+            color: var(--sidebar-text);
+            text-decoration: none;
+            border: none;
+            border-left: 4px solid transparent;
+            font-size: 1.05em;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            white-space: nowrap; /* Prevent text wrapping */
+            overflow: hidden; /* Hide overflow */
+            text-overflow: ellipsis; /* Add ellipsis for long text */
+            background-color: transparent; /* Explicitly set transparent background */
+        }
+        .sidebar-nav .nav-link:hover {
+            background-color: var(--sidebar-hover);
+            color: #fff;
+        }
+        .sidebar-nav .nav-link.active {
+            background-color: var(--sidebar-active);
+            color: #fff;
+            font-weight: 600;
+            border-left: 4px solid var(--primary-light);
+        }
+        .nav-link svg {
+            width: 20px;
+            height: 20px;
+            margin-right: 16px;
+            fill: currentColor;
+            opacity: 0.9;
+            flex-shrink: 0; /* Prevent icon shrinking */
+        }
+
+        /* --- メインコンテンツ --- */
+        .main-content {
+            margin-left: 250px; /* Match sidebar width */
+            /* width: calc(100% - 250px); Removed */
+            padding-top: 0; /* Adjust if header is sticky */
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+            box-sizing: border-box; /* Ensure padding is included */
+        }
+
+        /* --- メインヘッダー & フィルター --- */
+         .main-header {
+            background-color: var(--card-bg);
+            padding: 20px 32px;
+            border-bottom: 1px solid var(--border-color);
+            box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
+            position: sticky;
+            top: 0;
+            z-index: 50;
+            flex-shrink: 0;
+            /* No width needed, it takes the width of main-content */
+        }
+        .main-header h1 {
+            margin: 0 0 16px 0;
+            font-size: 1.65em;
+            color: var(--text-primary);
+            font-weight: 600;
+        }
+        .global-filters {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+        }
+        .global-filters .filter-group {
+            display: flex;
+            flex-direction: column;
+        }
+        .global-filters label {
+            font-size: 0.8em;
+            color: var(--text-light);
+            margin-bottom: 6px;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .global-filters select,
+        .global-filters input[type="date"] {
+            padding: 9px 12px;
+            border: 1px solid var(--border-color); /* Lighter border */
+            border-radius: 6px;
+            background-color: #fff;
+            font-size: 0.95em;
+            font-family: inherit;
+            color: var(--text-secondary);
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+        .global-filters select:hover,
+        .global-filters input[type="date"]:hover {
+            border-color: var(--primary-color);
+        }
+        .global-filters select:focus,
+        .global-filters input[type="date"]:focus {
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 3px rgba(100, 116, 139, 0.2);
+            outline: none;
+        }
+
+        /* --- タブコンテンツエリア --- */
+        .content-area {
+            padding: 32px;
+            flex-grow: 1; /* Allow content to fill remaining space */
+        }
+        .tab-pane {
+            display: none;
+        }
+        .tab-pane.active {
+            display: block;
+        }
+
+        /* --- ダッシュボードグリッド --- */
+        .dashboard-grid {
+            display: grid;
+            gap: 24px;
+            grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); /* Default grid */
+        }
+         /* Specific grid for overview top row */
+        #pane-kpi .dashboard-grid.kpi-row { /* Updated target */
+             grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); /* Allow 5 items */
+             margin-bottom: 24px; /* Add space below KPI row */
+        }
+         /* Grid for overview charts below KPIs */
+        #pane-kpi .dashboard-grid.chart-row { /* Updated target */
+             grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); /* Allow 2 larger charts */
+        }
+
+
+        /* --- カードスタイル --- */
+        .card {
+            background-color: var(--card-bg);
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03), 0 1px 2px rgba(0, 0, 0, 0.04); /* Subtle shadow */
+            padding: 24px;
+            box-sizing: border-box;
+            display: flex;
+            flex-direction: column;
+        }
+        .card-title {
+            font-size: 1.1em; /* Slightly smaller */
+            font-weight: 600;
+            margin: 0 0 20px 0;
+            color: var(--text-primary);
+            padding-bottom: 12px;
+            border-bottom: 1px solid var(--border-color);
+        }
+        .card-content {
+            min-height: 350px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            flex-grow: 1;
+            width: 100%;
+            position: relative; /* Needed for chart responsiveness */
+        }
+        /* Ensure canvas resizes correctly */
+        .card-content canvas {
+            max-width: 100%;
+            max-height: 100%;
+        }
+
+
+        /* --- KPIカードスタイル --- */
+        .kpi-card {
+            min-height: 140px; /* Slightly shorter */
+            justify-content: space-between;
+            padding: 20px; /* Slightly less padding */
+        }
+        .kpi-label {
+            font-size: 0.9em; /* Smaller label */
+            font-weight: 500;
+            color: var(--text-secondary);
+        }
+        .kpi-value {
+            font-size: 2.2em; /* Smaller value */
+            font-weight: 700;
+            color: var(--text-primary);
+            line-height: 1.1;
+            margin: 4px 0 8px 0; /* Adjusted margin */
+        }
+        .kpi-comparison {
+            font-size: 0.9em; /* Smaller comparison */
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            padding: 3px 6px; /* Adjusted padding */
+            border-radius: 4px; /* Slightly smaller radius */
+            width: fit-content;
+        }
+        .kpi-comparison .arrow {
+            margin-right: 4px;
+            font-size: 1em; /* Adjusted arrow size */
+        }
+        .kpi-comparison.positive {
+            color: var(--positive-color);
+            background-color: #ecfdf5; /* Lighter Green */
+        }
+        .kpi-comparison.negative {
+            color: var(--negative-color);
+            background-color: #fff1f2; /* Lighter Red */
+        }
+
+        /* --- インサイト（示唆）欄 (Removed for this version) --- */
+        /* .insight-box { ... } */
+
+        /* --- Simple List Style --- */
+        .simple-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+            width: 100%;
+            text-align: left;
+        }
+        .simple-list li {
+            padding: 10px 0; /* Increased padding */
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center; /* Vertically align items */
+            font-size: 0.95em;
+        }
+         .simple-list li:last-child {
+             border-bottom: none;
+         }
+        .simple-list .rank {
+            font-weight: 600;
+            color: var(--primary-color);
+            margin-right: 12px;
+            min-width: 20px; /* Ensure alignment */
+            font-size: 0.9em; /* Slightly smaller rank number */
+        }
+         .simple-list .item-label {
+            flex-grow: 1; /* Allow label to take space */
+            margin-right: 12px;
+            color: var(--text-secondary);
+         }
+         .simple-list .value {
+            font-weight: 600; /* Bolder value */
+            color: var(--text-primary);
+            white-space: nowrap;
+         }
+
+        /* --- Text analysis placeholder --- */
+        .text-analysis-placeholder {
+            font-size: 1.1em; color: var(--text-light); line-height: 1.8;
+            padding: 20px;
+            text-align: center;
+            border: 2px dashed var(--border-color);
+            border-radius: 8px;
+            width: 100%;
+        }
+         .text-analysis-placeholder span {
+             display: inline-block;
+             padding: 6px 12px;
+             margin: 4px;
+             background-color: var(--primary-light);
+             color: var(--primary-dark);
+             border-radius: 4px;
+             font-weight: 500;
+         }
+
+        /* --- グリッドの列スパン --- */
+        .col-span-2 { grid-column: span 2; }
+        .col-span-4 { grid-column: span 4; } /* Keep this for potential wider items */
+        .col-span-full { grid-column: 1 / -1; } /* Helper for full width items */
+
+
+        /* --- レスポンシブ対応 --- */
+        /* Tablet and larger adjustments first */
+        @media (min-width: 769px) {
+            .main-content {
+                margin-left: 250px; /* Ensure main content has margin */
+            }
+             #pane-kpi .dashboard-grid.kpi-row { /* Updated target */
+                 grid-template-columns: repeat(5, 1fr); /* 5 columns for KPI */
+             }
+             #pane-kpi .dashboard-grid.chart-row { /* Updated target */
+                 grid-template-columns: 1fr 1fr; /* 2 columns for charts */
+             }
+        }
+        @media (max-width: 1280px) {
+             .col-span-2, .col-span-4 { grid-column: span 2; } /* Default back to 2 */
+             .dashboard-grid { grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); }
+              #pane-kpi .dashboard-grid.kpi-row { /* Updated target */
+                 grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); /* Allow KPIs to wrap earlier */
+             }
+              #pane-kpi .dashboard-grid.chart-row { /* Updated target */
+                 grid-template-columns: 1fr 1fr; /* Keep 2 columns */
+            }
+        }
+
+        @media (max-width: 1024px) {
+             .dashboard-grid { grid-template-columns: 1fr 1fr; }
+             .col-span-2, .col-span-4 { grid-column: span 1; }
+             .col-span-full { grid-column: 1 / -1; }
+              /* Keep sidebar fixed on tablet */
+             .main-content { margin-left: 250px; /* Keep margin */ }
+              #pane-kpi .dashboard-grid.kpi-row { /* Updated target */
+                 grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); /* Smaller min KPI width */
+             }
+              #pane-kpi .dashboard-grid.chart-row { /* Updated target */
+                 grid-template-columns: 1fr; /* Charts stack on tablet */
+            }
+        }
+
+        /* Mobile adjustments last */
+        @media (max-width: 768px) {
+            body {
+                display: block; /* Change from flex for mobile */
+            }
+            .sidebar {
+                width: 100%;
+                height: auto;
+                position: static; /* Change from fixed */
+                z-index: 10;
+                overflow-y: visible;
+                box-shadow: none;
+                border-bottom: 1px solid var(--border-color);
+            }
+             .sidebar-nav { overflow-y: visible; }
+             .sidebar-header { padding: 16px; font-size: 1.2em;}
+             .sidebar-nav .nav-tabs { flex-direction: row; flex-wrap: wrap; margin-top: 0;}
+             .sidebar-nav .nav-link { font-size: 0.9em; padding: 10px 16px; border-left: none; border-bottom: 4px solid transparent;}
+             .sidebar-nav .nav-link.active { border-left: none; border-bottom: 4px solid var(--primary-light); background-color: transparent; color: var(--primary-dark); }
+             .sidebar-nav .nav-link svg { margin-right: 8px; width: 16px; height: 16px;}
+
+
+            .main-content { margin-left: 0; width: 100%; } /* Remove margin */
+            .main-header { padding: 16px; position: static; }
+            .main-header h1 { font-size: 1.4em; }
+            .global-filters { padding-bottom: 16px; }
+            .content-area { padding: 16px; }
+            .dashboard-grid { grid-template-columns: 1fr; } /* Stack everything */
+            .col-span-2, .col-span-4 { grid-column: span 1; }
+             #pane-kpi .dashboard-grid.kpi-row, /* Updated target */
+             #pane-kpi .dashboard-grid.chart-row { /* Updated target */
+                 grid-template-columns: 1fr; /* Stack KPIs and charts */
+             }
+            .card-content { min-height: 250px; }
+            .kpi-value { font-size: 2em; }
+            .insight-box { font-size: 0.85em; } /* Keep insight box adjustments */
+        }
+    </style>
+</head>
+<body>
+
+    <nav class="sidebar">
+        <div class="sidebar-header">CAST Dashboard</div>
+        <div class="sidebar-nav">
+            <div class="nav-tabs" role="tablist">
+                 <button class="nav-link active" id="tab-kpi" data-tab-target="#pane-kpi" role="tab">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path d="M10 2a.75.75 0 01.75.75v14.5a.75.75 0 01-1.5 0V2.75A.75.75 0 0110 2zM5.25 6.5a.75.75 0 01.75.75v10a.75.75 0 01-1.5 0V7.25a.75.75 0 01.75-.75zM14.75 4.5a.75.75 0 01.75.75v12a.75.75 0 01-1.5 0V5.25a.75.75 0 01.75-.75z" /></svg>
+                    KPIサマリー
+                </button>
+                <button class="nav-link" id="tab-profile" data-tab-target="#pane-profile" role="tab">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path d="M10 8a3 3 0 100-6 3 3 0 000 6zM3.465 14.493a1.25 1.25 0 00-2.43 1.116A9.98 9.98 0 0010 18c2.61 0 5-1.005 6.965-2.67.665-.558.26-1.68-.616-1.68H3.465z" /></svg>
+                    顧客プロファイル
+                </button>
+                <button class="nav-link" id="tab-loyalty" data-tab-target="#pane-loyalty" role="tab">
+                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path d="M9.653 16.915l-.005-.003-.019-.01a20.759 20.759 0 01-1.162-.682 22.045 22.045 0 01-2.582-1.9C4.045 12.733 2 10.352 2 7.5a4.5 4.5 0 018-2.828A4.5 4.5 0 0118 7.5c0 2.852-2.044 5.233-3.885 6.82a22.049 22.049 0 01-3.744 2.582l-.019.01-.005.003h-.002a.739.739 0 01-.69.001l-.002-.001z" /></svg>
+                    ロイヤルティ
+                </button>
+                <button class="nav-link" id="tab-revenue" data-tab-target="#pane-revenue" role="tab">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm.75-11.25a.75.75 0 00-1.5 0v2.5h-2.5a.75.75 0 000 1.5h2.5v2.5a.75.75 0 001.5 0v-2.5h2.5a.75.75 0 000-1.5h-2.5v-2.5z" clip-rule="evenodd" /></svg>
+                    収益・運営
+                </button>
+                <button class="nav-link" id="tab-issues" data-tab-target="#pane-issues" role="tab">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495zM10 5a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 0110 5zm0 9a1 1 0 100-2 1 1 0 000 2z" clip-rule="evenodd" /></svg>
+                    課題と魅力
+                </button>
+                 <button class="nav-link" id="tab-works" data-tab-target="#pane-works" role="tab">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-5 h-5"><path d="M18 3a1 1 0 00-1.196-.98l-10 2A1 1 0 006 5v10a1 1 0 001.196.98l10-2A1 1 0 0018 13V3zM7.5 13.172V6.828l7-1.4v6.344l-7 1.4z" /><path d="M3 5a1 1 0 011-1h.5a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h.5a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h.5a1 1 0 110 2H4a1 1 0 01-1-1z" /></svg>
+                    作品別サマリー
+                </button>
+            </div>
+        </nav>
+    </nav>
+
+    <main class="main-content">
+
+        <header class="main-header">
+            <h1>映画業界サマリー（単純集計・ランキング）</h1>
+             <div class="global-filters">
+                <div class="filter-group">
+                    <label for="filter-period-start">集計期間（開始）</label>
+                    <input type="date" id="filter-period-start" value="2025-10-01">
+                </div>
+                <div class="filter-group">
+                    <label for="filter-period-end">集計期間（終了）</label>
+                    <input type="date" id="filter-period-end" value="2025-10-25">
+                </div>
+                 <div class="filter-group">
+                    <label for="filter-work">作品フィルター (作品別タブ用)</label>
+                    <select id="filter-work">
+                        <option value="all">作品A</option>
+                        <option value="work_b">作品B</option>
+                        <option value="work_c">作品C</option>
+                    </select>
+                </div>
+                </div>
+        </header>
+
+        <div class="content-area">
+            <div class="tab-content">
+
+                <div class="tab-pane active" id="pane-kpi" role="tabpanel">
+                     <div class="dashboard-grid kpi-row">
+                         <div class="card kpi-card">
+                            <div class="kpi-label">劇場体験 総合NPS</div>
+                            <div class="kpi-value">+15.2</div>
+                             <div class="kpi-comparison positive"><span class="arrow">▲</span> +1.0 pt</div>
+                        </div>
+                         <div class="card kpi-card">
+                            <div class="kpi-label">飲食購入率</div>
+                            <div class="kpi-value">58.0%</div>
+                            <div class="kpi-comparison negative"><span class="arrow">▼</span> -0.5 %</div>
+                        </div>
+                        <div class="card kpi-card">
+                            <div class="kpi-label">休眠・新規来場比率</div>
+                            <div class="kpi-value">13.0%</div>
+                            <div class="kpi-comparison positive"><span class="arrow">▲</span> +1.5 %</div>
+                        </div>
+                         <div class="card kpi-card">
+                            <div class="kpi-label">高頻度来場比率(3ヶ月以内)</div>
+                            <div class="kpi-value">50.0%</div>
+                            <div class="kpi-comparison positive"><span class="arrow">▲</span> +2.0 %</div>
+                        </div>
+                         <div class="card kpi-card">
+                            <div class="kpi-label">「おひとりさま」鑑賞比率</div>
+                            <div class="kpi-value">42.5%</div>
+                            <div class="kpi-comparison positive"><span class="arrow">▲</span> +1.0 %</div>
+                        </div>
+                    </div>
+                     <div class="dashboard-grid chart-row">
+                        <div class="card"> <div class="card-title">鑑賞頻度別 構成比 (Q19)</div>
+                            <div class="card-content">
+                                <canvas id="kpiFreqChart"></canvas>
+                            </div>
+                        </div>
+                        <div class="card"> <div class="card-title">鑑賞ブランク別 構成比 (Q18)</div>
+                            <div class="card-content">
+                                <canvas id="kpiBlankChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="tab-pane" id="pane-profile" role="tabpanel">
+                    <div class="dashboard-grid" style="grid-template-columns: 1fr 1fr 1fr;">
+                        <div class="card">
+                            <div class="card-title">性別構成比 (Q28)</div>
+                            <div class="card-content">
+                                <canvas id="profileGenderChart"></canvas>
+                            </div>
+                        </div>
+                        <div class="card">
+                            <div class="card-title">年代構成比 (Q29)</div>
+                            <div class="card-content">
+                                <canvas id="profileAgeChart"></canvas>
+                            </div>
+                        </div>
+                        <div class="card">
+                            <div class="card-title">居住エリア Top5 (Q30)</div>
+                            <div class="card-content">
+                                <canvas id="profileAreaChart"></canvas>
+                            </div>
+                        </div>
+                        <div class="card">
+                            <div class="card-title">主要な交通手段 (Q22)</div>
+                            <div class="card-content">
+                                <canvas id="profileTransportChart"></canvas>
+                            </div>
+                        </div>
+                         <div class="card">
+                            <div class="card-title">劇場までの移動時間 (Q23)</div>
+                            <div class="card-content">
+                                <canvas id="profileTimeChart"></canvas>
+                            </div>
+                        </div>
+                         <div class="card">
+                            <div class="card-title">1日の過ごし方 パターン (Q24)</div>
+                            <div class="card-content">
+                                <canvas id="profilePlanChart"></canvas>
+                            </div>
+                        </div>
+                         <div class="card col-span-full"> <div class="card-title">鑑賞日時パターン (Q5)</div>
+                            <div class="card-content" style="min-height: 250px;"> <canvas id="profileTimeSlotChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="tab-pane" id="pane-loyalty" role="tabpanel">
+                     <div class="dashboard-grid" style="grid-template-columns: 1fr 1fr;">
+                         <div class="card">
+                            <div class="card-title">メイン利用劇場シェア (Q20)</div>
+                             <div class="card-content">
+                                <canvas id="loyaltyShareChart"></canvas>
+                            </div>
+                        </div>
+                         <div class="card">
+                            <div class="card-title">劇場選定の重視点 Top 5 (Q21)</div>
+                            <div class="card-content">
+                                <ul class="simple-list">
+                                     <li><span class="rank">1.</span> <span class="item-label">立地・アクセス</span> <span class="value">65%</span></li>
+                                     <li><span class="rank">2.</span> <span class="item-label">上映時間</span> <span class="value">55%</span></li>
+                                     <li><span class="rank">3.</span> <span class="item-label">スクリーンや音響などの設備</span> <span class="value">40%</span></li>
+                                     <li><span class="rank">4.</span> <span class="item-label">チケット料金</span> <span class="value">35%</span></li>
+                                     <li><span class="rank">5.</span> <span class="item-label">座席の快適さ</span> <span class="value">30%</span></li>
+                                     <li><span class="rank">6.</span> <span class="item-label">上映作品のラインナップ</span> <span class="value">28%</span></li>
+                                     <li><span class="rank">7.</span> <span class="item-label">会員サービス・割引</span> <span class="value">25%</span></li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="tab-pane" id="pane-revenue" role="tabpanel">
+                      <div class="dashboard-grid" style="grid-template-columns: 1fr 1fr;">
+                         <div class="card">
+                            <div class="card-title">今回劇場を選んだ理由 Top 5 (Q15)</div>
+                            <div class="card-content">
+                                <ul class="simple-list">
+                                     <li><span class="rank">1.</span> <span class="item-label">立地が便利だから</span> <span class="value">50%</span></li>
+                                     <li><span class="rank">2.</span> <span class="item-label">観たい時間の上映があったから</span> <span class="value">45%</span></li>
+                                     <li><span class="rank">3.</span> <span class="item-label">いつも利用しているから</span> <span class="value">30%</span></li>
+                                     <li><span class="rank">4.</span> <span class="item-label">特別な設備で観たかったから</span> <span class="value">25%</span></li>
+                                     <li><span class="rank">5.</span> <span class="item-label">使いたい会員サービスがあったから</span> <span class="value">20%</span></li>
+                                </ul>
+                            </div>
+                        </div>
+                         <div class="card">
+                            <div class="card-title">鑑賞決定タイミング (Q6)</div>
+                            <div class="card-content">
+                                <canvas id="revenueTimingChart"></canvas>
+                            </div>
+                        </div>
+                          <div class="card col-span-full"> <div class="card-title">来場「最後のひと押し」要因 Top 5 (Q10)</div>
+                             <div class="card-content">
+                                <canvas id="revenuePushChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="tab-pane" id="pane-issues" role="tabpanel">
+                      <div class="dashboard-grid" style="grid-template-columns: 1fr 1fr;">
+                        <div class="card">
+                            <div class="card-title">映画館の魅力 Top 5 (Q26)</div>
+                            <div class="card-content">
+                                <canvas id="issuesCharmRankChart"></canvas>
+                            </div>
+                        </div>
+                         <div class="card">
+                            <div class="card-title">鑑賞マナー懸念点 ワースト3 (Q27)</div>
+                            <div class="card-content">
+                                <canvas id="issuesMannerRankChart"></canvas>
+                            </div>
+                        </div>
+                        <div class="card col-span-full"> <div class="card-title">「映画館で観たい」ジャンル Top 5 (Q25)</div>
+                             <div class="card-content">
+                                <canvas id="issuesGenreRankChart"></canvas>
+                            </div>
+                        </div>
+                          <div class="card col-span-full"> <div class="card-title">劇場への意見・要望 (Q17) - テキスト分析</div>
+                            <div class="card-content text-analysis-placeholder">
+                                <span style="font-size: 1.8em;">料金高い</span>
+                                <span style="font-size: 1.4em;">空調寒い</span>
+                                <span style="font-size: 1.5em;">清掃</span>
+                                <span style="font-size: 1.2em;">ポップコーン味</span>
+                                <span>トイレ綺麗</span>
+                                <span style="font-size: 1.3em;">スタッフ対応</span>
+                                <span>音量</span>
+                                <span>予約システム</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                 <div class="tab-pane" id="pane-works" role="tabpanel">
+                    <p style="text-align: center; color: var(--text-light); margin-bottom: 20px;">※以下のデータはヘッダーの「作品フィルター」で選択された作品に基づきます（サンプル）</p>
+                    <div class="dashboard-grid" style="grid-template-columns: repeat(3, 1fr);">
+                         <div class="card kpi-card">
+                            <div class="kpi-label">作品NPS (Q11)</div>
+                            <div class="kpi-value">+50.0</div>
+                            <div class="kpi-comparison positive"><span class="arrow">▲</span> (高評価)</div>
+                        </div>
+                         <div class="card kpi-card">
+                            <div class="kpi-label">リピート率 (Q3)</div>
+                            <div class="kpi-value">15.0%</div>
+                             <div class="kpi-comparison positive"><span class="arrow">▲</span> (高い)</div>
+                        </div>
+                        <div class="card">
+                            <div class="card-title">満足点 Top 3 (Q12)</div>
+                             <div class="card-content">
+                                <ul class="simple-list">
+                                     <li><span class="rank">1.</span> <span class="item-label">ストーリー／脚本</span> <span class="value">70%</span></li>
+                                     <li><span class="rank">2.</span> <span class="item-label">映像美／美術</span> <span class="value">60%</span></li>
+                                     <li><span class="rank">3.</span> <span class="item-label">キャスト／俳優の演技</span> <span class="value">55%</span></li>
+                                </ul>
+                            </div>
+                        </div>
+                          <div class="card">
+                            <div class="card-title">鑑賞前の期待 Top 3 (Q8)</div>
+                             <div class="card-content">
+                                <ul class="simple-list">
+                                     <li><span class="rank">1.</span> <span class="item-label">キャスト／俳優の演技</span> <span class="value">65%</span></li>
+                                     <li><span class="rank">2.</span> <span class="item-label">原作の世界観</span> <span class="value">50%</span></li>
+                                     <li><span class="rank">3.</span> <span class="item-label">ストーリー</span> <span class="value">45%</span></li>
+                                </ul>
+                            </div>
+                        </div>
+                          <div class="card">
+                            <div class="card-title">認知経路 Top 3 (Q7)</div>
+                             <div class="card-content">
+                                <ul class="simple-list">
+                                     <li><span class="rank">1.</span> <span class="item-label">劇場での予告編</span> <span class="value">55%</span></li>
+                                     <li><span class="rank">2.</span> <span class="item-label">テレビCM</span> <span class="value">40%</span></li>
+                                     <li><span class="rank">3.</span> <span class="item-label">YouTube</span> <span class="value">30%</span></li>
+                                </ul>
+                            </div>
+                        </div>
+                         <div class="card">
+                            <div class="card-title">鑑賞の決め手 Top 3 (Q9)</div>
+                             <div class="card-content">
+                                <ul class="simple-list">
+                                     <li><span class="rank">1.</span> <span class="item-label">予告編が面白そうだった</span> <span class="value">50%</span></li>
+                                     <li><span class="rank">2.</span> <span class="item-label">好きな監督・俳優が出演</span> <span class="value">35%</span></li>
+                                     <li><span class="rank">3.</span> <span class="item-label">世間の評判・レビューが高かった</span> <span class="value">25%</span></li>
+                                </ul>
+                            </div>
+                        </div>
+                          <div class="card">
+                            <div class="card-title">最後のひと押し Top 3 (Q10)</div>
+                             <div class="card-content">
+                                <ul class="simple-list">
+                                     <li><span class="rank">1.</span> <span class="item-label">SNSで絶賛の感想を見たから</span> <span class="value">40%</span></li>
+                                     <li><span class="rank">2.</span> <span class="item-label">友人や家族に強く誘われたから</span> <span class="value">30%</span></li>
+                                     <li><span class="rank">3.</span> <span class="item-label">今日しか観る時間がなさそうだったから</span> <span class="value">15%</span></li>
+                                </ul>
+                            </div>
+                        </div>
+                         <div class="card">
+                            <div class="card-title">来場者 性別構成比 (Q28)</div>
+                            <div class="card-content">
+                                <canvas id="workGenderChart"></canvas>
+                            </div>
+                        </div>
+                         <div class="card">
+                            <div class="card-title">来場者 年代構成比 (Q29)</div>
+                            <div class="card-content">
+                                <canvas id="workAgeChart"></canvas>
+                            </div>
+                        </div>
+                         <div class="card">
+                            <div class="card-title">同行者構成比 (Q4)</div>
+                            <div class="card-content">
+                                <canvas id="workCompanionChart"></canvas>
+                            </div>
+                        </div>
+                         <div class="card">
+                            <div class="card-title">上映フォーマット構成比 (Q2)</div>
+                             <div class="card-content">
+                                <canvas id="workFormatChart"></canvas>
+                            </div>
+                        </div>
+                         <div class="card col-span-full"> <div class="card-title">作品感想 テキスト分析 (Q13)</div>
+                             <div class="card-content text-analysis-placeholder">
+                                <span style="font-size: 1.8em;">感動した</span>
+                                <span style="font-size: 1.5em;">映像すごい</span>
+                                <span style="font-size: 1.6em;">ストーリー最高</span>
+                                <span>泣ける</span>
+                                <span style="font-size: 1.3em;">俳優演技</span>
+                                <span>音楽が良い</span>
+                                <span>もう一度観たい</span>
+                             </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </main>
+
+    <script>
+        /* --- Chart.js グローバル設定 --- */
+        Chart.defaults.font.family = 'Inter, "Noto Sans JP", sans-serif';
+        Chart.defaults.color = 'var(--text-secondary)'; // Use text-secondary for default text
+
+        /* --- チャートインスタンスを管理 --- */
+        window.myCharts = {};
+
+        /* --- グラフ配色 (CSS Variablesから取得) --- */
+        function getCssVar(name) { return getComputedStyle(document.documentElement).getPropertyValue(name).trim(); }
+        const chartColors = {
+            primary: getCssVar('--chart-color-1'), primaryLight: getCssVar('--chart-color-2'),
+            positive: getCssVar('--chart-positive'), negative: getCssVar('--chart-negative'),
+            teal: getCssVar('--chart-color-3'), sky: getCssVar('--chart-color-4'),
+            purple: getCssVar('--chart-color-5'), gray: getCssVar('--chart-gray')
+        };
+
+        /* --- デフォルトのグラフオプション --- */
+        const defaultChartOptions = {
+            responsive: true, maintainAspectRatio: false,
+            plugins: {
+                legend: { position: 'bottom', labels: { color: 'var(--text-secondary)', padding: 15, boxWidth: 10, usePointStyle: true, pointStyle: 'rectRounded' } },
+                tooltip: { backgroundColor: 'rgba(30, 41, 59, 0.9)', titleColor: '#ffffff', bodyColor: '#e2e8f0', padding: 10, cornerRadius: 4, titleFont: { weight: '600' }, bodyFont: { weight: '500' } }
+            },
+            scales: {
+                x: { ticks: { color: 'var(--text-light)', font: { size: 10 } }, grid: { display: false }, border: { display: false } },
+                y: { ticks: { color: 'var(--text-light)', font: { size: 10 } }, grid: { color: 'var(--border-color)', drawBorder: false }, border: { display: false } }
+            }
+        };
+        const horizontalBarOptions = { ...defaultChartOptions, indexAxis: 'y', scales: { x: { ...defaultChartOptions.scales.x, grid: { color: 'var(--border-color)', drawBorder: false, display: true }, border: { display: false } }, y: { ...defaultChartOptions.scales.y, grid: { display: false } } } };
+        const pieDoughnutBaseOptions = { ...defaultChartOptions, elements: { arc: { borderWidth: 0 } } };
+        const pieDoughnutOptions = { ...pieDoughnutBaseOptions };
+        const pieDoughnutOptionsRightLegend = { ...pieDoughnutBaseOptions, plugins: { ...pieDoughnutBaseOptions.plugins, legend: { ...pieDoughnutBaseOptions.plugins.legend, position: 'right' } } };
+        const barBaseOptions = { ...defaultChartOptions, elements: { bar: { borderRadius: 3 } } };
+        const barDefaultOptions = { ...barBaseOptions };
+        const barHorizontalDefaultOptions = { ...horizontalBarOptions, elements: { bar: { borderRadius: { topRight: 3, bottomRight: 3, topLeft: 0, bottomLeft: 0 } } } };
+
+        /* --- グラフ初期化関数 --- */
+
+        function initKpiCharts() {
+            if (!window.myCharts.kpiFreqChart) {
+                const ctx = document.getElementById('kpiFreqChart').getContext('2d');
+                window.myCharts.kpiFreqChart = new Chart(ctx, { type: 'doughnut', data: { labels: ['ライト層 (年1-4回)', 'ミドル層 (年5-11回)', 'コア層 (年12回+)'], datasets: [{ data: [45, 30, 25], backgroundColor: [chartColors.primaryLight, chartColors.primary, chartColors.teal] }] }, options: pieDoughnutOptionsRightLegend });
+            }
+            if (!window.myCharts.kpiBlankChart) {
+                const ctx = document.getElementById('kpiBlankChart').getContext('2d');
+                window.myCharts.kpiBlankChart = new Chart(ctx, { type: 'bar', data: { labels: ['1ヶ月以内', '3ヶ月以内', '半年以内', '1年以内', '1年以上ぶり', '3年以上ぶり', '人生初'], datasets: [{ label: '割合', data: [30, 20, 15, 10, 12, 8, 5], backgroundColor: chartColors.sky }] }, options: { ...barDefaultOptions, plugins: { legend: { display: false } } } });
+            }
+        }
+
+        function initProfileCharts() {
+            if (!window.myCharts.profileGenderChart) {
+                const ctx = document.getElementById('profileGenderChart').getContext('2d');
+                window.myCharts.profileGenderChart = new Chart(ctx, { type: 'pie', data: { labels: ['男性', '女性', '他'], datasets: [{ data: [48, 50, 2], backgroundColor: [chartColors.primary, chartColors.purple, chartColors.gray] }] }, options: pieDoughnutOptions });
+            }
+            if (!window.myCharts.profileAgeChart) {
+                const ctx = document.getElementById('profileAgeChart').getContext('2d');
+                window.myCharts.profileAgeChart = new Chart(ctx, { type: 'bar', data: { labels: ['10代', '20代', '30代', '40代', '50代', '60代+'], datasets: [{ label: '構成比', data: [12, 25, 20, 18, 15, 10], backgroundColor: chartColors.teal }] }, options: { ...barDefaultOptions, plugins: { legend: { display: false } } } });
+            }
+            if (!window.myCharts.profileAreaChart) {
+                const ctx = document.getElementById('profileAreaChart').getContext('2d');
+                window.myCharts.profileAreaChart = new Chart(ctx, { type: 'bar', data: { labels: ['東京都', '神奈川県', '埼玉県', '千葉県', '大阪府'], datasets: [{ label: '構成比', data: [30, 20, 15, 12, 8], backgroundColor: chartColors.primary }] }, options: { ...barHorizontalDefaultOptions, plugins: { legend: { display: false } } } });
+            }
+            if (!window.myCharts.profileTransportChart) {
+                const ctx = document.getElementById('profileTransportChart').getContext('2d');
+                window.myCharts.profileTransportChart = new Chart(ctx, { type: 'doughnut', data: { labels: ['公共交通機関', '自家用車', '徒歩', '自転車'], datasets: [{ data: [50, 30, 10, 8], backgroundColor: [chartColors.primary, chartColors.teal, chartColors.primaryLight, chartColors.sky] }] }, options: pieDoughnutOptions });
+            }
+            if (!window.myCharts.profileTimeChart) {
+                const ctx = document.getElementById('profileTimeChart').getContext('2d');
+                window.myCharts.profileTimeChart = new Chart(ctx, { type: 'bar', data: { labels: ['10分以内', '10-30分', '30-60分', '60-90分', '90分以上'], datasets: [{ label: '構成比', data: [15, 40, 30, 10, 5], backgroundColor: chartColors.primaryLight, borderWidth: 0 }] }, options: { ...barDefaultOptions, plugins: { legend: { display: false } } } }); // borderWidth 0
+            }
+            if (!window.myCharts.profilePlanChart) {
+                const ctx = document.getElementById('profilePlanChart').getContext('2d');
+                window.myCharts.profilePlanChart = new Chart(ctx, { type: 'pie', data: { labels: ['映画のみ', '後に飲食等', '前に飲食等', 'その他'], datasets: [{ data: [40, 35, 20, 5], backgroundColor: [chartColors.primary, chartColors.purple, chartColors.sky, chartColors.gray] }] }, options: pieDoughnutOptions });
+            }
+            if (!window.myCharts.profileTimeSlotChart) {
+                const ctx = document.getElementById('profileTimeSlotChart').getContext('2d');
+                window.myCharts.profileTimeSlotChart = new Chart(ctx, { type: 'bar', data: { labels: ['平日午前', '平日午後', '平日夜', '休日午前', '休日午後', '休日夜'], datasets: [{ label: '来場比率', data: [5, 10, 20, 15, 30, 20], backgroundColor: chartColors.primaryLight }] }, options: { ...barDefaultOptions, plugins: { legend: { display: false } } } });
+            }
+        }
+
+        function initLoyaltyCharts() {
+            if (!window.myCharts.loyaltyShareChart) {
+                const ctx = document.getElementById('loyaltyShareChart').getContext('2d');
+                window.myCharts.loyaltyShareChart = new Chart(ctx, { type: 'bar', data: { labels: ['TOHO', 'イオン', 'UC', '109', 'MOVIX', 'Tジョイ', '他', '未定'], datasets: [{ label: 'シェア', data: [30, 20, 15, 8, 7, 5, 5, 10], backgroundColor: chartColors.primary }] }, options: { ...barDefaultOptions, plugins: { legend: { display: false } } } });
+            }
+            // Ranking for Q21 is handled via HTML list
+        }
+
+        function initRevenueCharts() {
+            // Ranking for Q15 is handled via HTML list
+            if (!window.myCharts.revenueTimingChart) {
+                const ctx = document.getElementById('revenueTimingChart').getContext('2d');
+                window.myCharts.revenueTimingChart = new Chart(ctx, { type: 'pie', data: { labels: ['当日', '2-3日前', '1週間前', 'それ以上前'], datasets: [{ data: [30, 40, 20, 10], backgroundColor: [chartColors.sky, chartColors.primary, chartColors.primaryLight, chartColors.gray] }] }, options: pieDoughnutOptions });
+            }
+            if (!window.myCharts.revenuePushChart) {
+                const ctx = document.getElementById('revenuePushChart').getContext('2d');
+                window.myCharts.revenuePushChart = new Chart(ctx, { type: 'bar', data: { labels: ['SNS口コミ', '友人誘い', '時間空き', '特典', '今日しか'], datasets: [{ label: '要因', data: [40, 30, 15, 10, 5], backgroundColor: chartColors.purple }] }, options: { ...barHorizontalDefaultOptions, plugins: { legend: { display: false } } } });
+            }
+        }
+
+        function initIssuesCharts() {
+            if (!window.myCharts.issuesCharmRankChart) {
+                const ctx = document.getElementById('issuesCharmRankChart').getContext('2d');
+                window.myCharts.issuesCharmRankChart = new Chart(ctx, { type: 'bar', data: { labels: ['没入感', '集中環境', 'イベント感', '一体感', 'その他'], datasets: [{ label: '魅力度', data: [75, 55, 30, 10, 5], backgroundColor: chartColors.primary }] }, options: { ...barHorizontalDefaultOptions, plugins: { legend: { display: false } } } });
+            }
+            if (!window.myCharts.issuesMannerRankChart) {
+                const ctx = document.getElementById('issuesMannerRankChart').getContext('2d');
+                window.myCharts.issuesMannerRankChart = new Chart(ctx, { type: 'bar', data: { labels: ['おしゃべり', 'スマホ光', '座席キック', '飲食音/匂'], datasets: [{ label: '懸念度', data: [65, 50, 30, 20], backgroundColor: chartColors.negative }] }, options: { ...barHorizontalDefaultOptions, plugins: { legend: { display: false } } } });
+            }
+            if (!window.myCharts.issuesGenreRankChart) {
+                const ctx = document.getElementById('issuesGenreRankChart').getContext('2d');
+                window.myCharts.issuesGenreRankChart = new Chart(ctx, { type: 'bar', data: { labels: ['アクション', 'SF/ファンタジー', 'アニメ', 'ミュージカル', 'サスペンス'], datasets: [{ label: '観たい度', data: [60, 58, 45, 30, 25], backgroundColor: chartColors.teal }] }, options: { ...barHorizontalDefaultOptions, plugins: { legend: { display: false } } } });
+            }
+             // Text analysis placeholder, no chart
+        }
+
+        function initWorksCharts() {
+            if (!window.myCharts.workGenderChart) {
+                 const ctx = document.getElementById('workGenderChart').getContext('2d');
+                window.myCharts.workGenderChart = new Chart(ctx, { type: 'pie', data: { labels: ['男性', '女性', '他'], datasets: [{ data: [40, 58, 2], backgroundColor: [chartColors.primary, chartColors.purple, chartColors.gray] }] }, options: pieDoughnutOptions });
+            }
+             if (!window.myCharts.workAgeChart) {
+                 const ctx = document.getElementById('workAgeChart').getContext('2d');
+                window.myCharts.workAgeChart = new Chart(ctx, { type: 'bar', data: { labels: ['10代', '20代', '30代', '40代', '50代', '60代+'], datasets: [{ label: '構成比', data: [20, 40, 25, 10, 3, 2], backgroundColor: chartColors.teal }] }, options: { ...barDefaultOptions, plugins: { legend: { display: false } } } });
+            }
+             if (!window.myCharts.workCompanionChart) {
+                 const ctx = document.getElementById('workCompanionChart').getContext('2d');
+                 window.myCharts.workCompanionChart = new Chart(ctx, { type: 'doughnut', data: { labels: ['1人', '友人・恋人', '家族', '他'], datasets: [{ data: [30, 50, 15, 5], backgroundColor: [chartColors.primary, chartColors.purple, chartColors.sky, chartColors.gray] }] }, options: pieDoughnutOptions });
+            }
+             if (!window.myCharts.workFormatChart) {
+                 const ctx = document.getElementById('workFormatChart').getContext('2d');
+                 window.myCharts.workFormatChart = new Chart(ctx, { type: 'pie', data: { labels: ['通常2D', 'IMAX', '4DX/MX4D', '3D', '他'], datasets: [{ data: [70, 20, 5, 3, 2], backgroundColor: [chartColors.primary, chartColors.teal, chartColors.purple, chartColors.sky, chartColors.gray] }] }, options: pieDoughnutOptions });
+            }
+        }
+
+
+        /* --- タブ切り替え機能 & グラフ遅延初期化 --- */
+        document.addEventListener('DOMContentLoaded', () => {
+            const tabs = document.querySelectorAll('[role="tab"]');
+            const tabPanes = document.querySelectorAll('[role="tabpanel"]');
+
+            // Function to destroy charts in a specific pane
+            function destroyChartsInPane(paneId) {
+                const pane = document.getElementById(paneId);
+                if (!pane) return;
+                const canvasElements = pane.querySelectorAll('canvas');
+                canvasElements.forEach(canvas => {
+                    const chartInstance = Chart.getChart(canvas); // Get chart instance by canvas
+                    if (chartInstance) {
+                         // console.log(`Destroying chart in ${paneId}:`, chartInstance.id); // Debug
+                        chartInstance.destroy();
+                    }
+                });
+                // Clear chart references for the pane (optional but good practice)
+                 const chartPrefix = paneId.replace('pane-', '');
+                 Object.keys(window.myCharts).forEach(key => {
+                    if (key.toLowerCase().startsWith(chartPrefix.toLowerCase())) {
+                         delete window.myCharts[key];
+                    }
+                });
+            }
+
+
+            // Tab click event
+            tabs.forEach(tab => {
+                tab.addEventListener('click', () => {
+                    const activeTabId = document.querySelector('.nav-link.active')?.id;
+                    const activePaneId = activeTabId?.replace('tab-', 'pane-');
+
+                    // Destroy charts in the currently active pane *before* switching
+                    if (activePaneId) {
+                         destroyChartsInPane(activePaneId);
+                    }
+
+
+                    // Deactivate all tabs and panes
+                    tabs.forEach(t => t.classList.remove('active'));
+                    tabPanes.forEach(p => p.classList.remove('active'));
+
+                    // Activate the clicked tab and corresponding pane
+                    tab.classList.add('active');
+                    const targetPane = document.querySelector(tab.dataset.tabTarget);
+                    if(targetPane) {
+                        targetPane.classList.add('active');
+
+                        // Initialize charts for the newly activated pane
+                        switch(tab.id) {
+                            case 'tab-kpi': // Updated ID based on HTML
+                                initKpiCharts();
+                                break;
+                            case 'tab-profile':
+                                initProfileCharts();
+                                break;
+                            case 'tab-loyalty':
+                                initLoyaltyCharts();
+                                break;
+                            case 'tab-revenue':
+                                initRevenueCharts();
+                                break;
+                            case 'tab-issues':
+                                initIssuesCharts();
+                                break;
+                             case 'tab-works': // Added Works tab
+                                initWorksCharts();
+                                break;
+                        }
+                    }
+                });
+            });
+
+            // Initialize charts for the initial active tab
+            initKpiCharts(); // Initialize KPI charts first as it's the default active tab
+        });
+
+    </script>
+</body>
+</html>
