@@ -61,7 +61,6 @@
             margin: 0;
             background-color: var(--bg-color);
             color: var(--text-primary);
-            /* display: flex; No longer using flex for body */
             min-height: 100vh;
             -webkit-font-smoothing: antialiased;
             -moz-osx-font-smoothing: grayscale;
@@ -96,6 +95,7 @@
            overflow-y: auto; /* Allow nav scrolling */
         }
         .sidebar-nav .nav-tabs {
+            display: flex; /* Ensure flex context */
             flex-direction: column;
             border: none;
             margin-top: 16px;
@@ -139,12 +139,10 @@
         /* --- メインコンテンツ --- */
         .main-content {
             margin-left: 250px; /* Match sidebar width */
-            /* width: calc(100% - 250px); Removed */
             padding-top: 0; /* Adjust if header is sticky */
             display: flex;
             flex-direction: column;
             min-height: 100vh;
-            box-sizing: border-box; /* Ensure padding is included */
         }
 
         /* --- メインヘッダー & フィルター --- */
@@ -309,8 +307,26 @@
             background-color: #fff1f2; /* Lighter Red */
         }
 
-        /* --- インサイト（示唆）欄 (Removed for this version) --- */
-        /* .insight-box { ... } */
+         /* --- Trend Button Style --- */
+        .trend-button {
+            display: inline-block;
+            margin-top: 10px; /* Add some space */
+            padding: 6px 12px;
+            background-color: var(--primary-light);
+            color: var(--primary-dark);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            text-decoration: none;
+            font-size: 0.85em;
+            font-weight: 500;
+            text-align: center;
+            transition: background-color 0.2s, color 0.2s;
+            align-self: flex-start; /* Align button to the left */
+        }
+        .trend-button:hover {
+            background-color: var(--primary-color);
+            color: var(--card-bg);
+        }
 
         /* --- Simple List Style --- */
         .simple-list {
@@ -386,6 +402,7 @@
              #pane-kpi .dashboard-grid.chart-row { /* Updated target */
                  grid-template-columns: 1fr 1fr; /* 2 columns for charts */
              }
+
         }
         @media (max-width: 1280px) {
              .col-span-2, .col-span-4 { grid-column: span 2; } /* Default back to 2 */
@@ -447,7 +464,8 @@
              }
             .card-content { min-height: 250px; }
             .kpi-value { font-size: 2em; }
-            .insight-box { font-size: 0.85em; } /* Keep insight box adjustments */
+            /* Hide insight box on mobile for simplicity */
+            .insight-box { display: none; }
         }
     </style>
 </head>
@@ -518,6 +536,7 @@
                             <div class="kpi-label">劇場体験 総合NPS</div>
                             <div class="kpi-value">+15.2</div>
                              <div class="kpi-comparison positive"><span class="arrow">▲</span> +1.0 pt</div>
+                             <a href="nps_trend.html" class="trend-button" target="_blank">推移グラフ →</a>
                         </div>
                          <div class="card kpi-card">
                             <div class="kpi-label">飲食購入率</div>
@@ -821,7 +840,7 @@
             }
         };
         const horizontalBarOptions = { ...defaultChartOptions, indexAxis: 'y', scales: { x: { ...defaultChartOptions.scales.x, grid: { color: 'var(--border-color)', drawBorder: false, display: true }, border: { display: false } }, y: { ...defaultChartOptions.scales.y, grid: { display: false } } } };
-        const pieDoughnutBaseOptions = { ...defaultChartOptions, elements: { arc: { borderWidth: 0 } } };
+        const pieDoughnutBaseOptions = { ...defaultChartOptions, elements: { arc: { borderWidth: 0 } } }; // borderWidth 0
         const pieDoughnutOptions = { ...pieDoughnutBaseOptions };
         const pieDoughnutOptionsRightLegend = { ...pieDoughnutBaseOptions, plugins: { ...pieDoughnutBaseOptions.plugins, legend: { ...pieDoughnutBaseOptions.plugins.legend, position: 'right' } } };
         const barBaseOptions = { ...defaultChartOptions, elements: { bar: { borderRadius: 3 } } };
@@ -846,34 +865,34 @@
                 const ctx = document.getElementById('profileGenderChart').getContext('2d');
                 window.myCharts.profileGenderChart = new Chart(ctx, { type: 'pie', data: { labels: ['男性', '女性', '他'], datasets: [{ data: [48, 50, 2], backgroundColor: [chartColors.primary, chartColors.purple, chartColors.gray] }] }, options: pieDoughnutOptions });
             }
-            if (!window.myCharts.profileAgeChart) {
+             if (!window.myCharts.profileAgeChart) {
                 const ctx = document.getElementById('profileAgeChart').getContext('2d');
                 window.myCharts.profileAgeChart = new Chart(ctx, { type: 'bar', data: { labels: ['10代', '20代', '30代', '40代', '50代', '60代+'], datasets: [{ label: '構成比', data: [12, 25, 20, 18, 15, 10], backgroundColor: chartColors.teal }] }, options: { ...barDefaultOptions, plugins: { legend: { display: false } } } });
             }
-            if (!window.myCharts.profileAreaChart) {
+             if (!window.myCharts.profileAreaChart) {
                 const ctx = document.getElementById('profileAreaChart').getContext('2d');
                 window.myCharts.profileAreaChart = new Chart(ctx, { type: 'bar', data: { labels: ['東京都', '神奈川県', '埼玉県', '千葉県', '大阪府'], datasets: [{ label: '構成比', data: [30, 20, 15, 12, 8], backgroundColor: chartColors.primary }] }, options: { ...barHorizontalDefaultOptions, plugins: { legend: { display: false } } } });
             }
-            if (!window.myCharts.profileTransportChart) {
+             if (!window.myCharts.profileTransportChart) {
                 const ctx = document.getElementById('profileTransportChart').getContext('2d');
                 window.myCharts.profileTransportChart = new Chart(ctx, { type: 'doughnut', data: { labels: ['公共交通機関', '自家用車', '徒歩', '自転車'], datasets: [{ data: [50, 30, 10, 8], backgroundColor: [chartColors.primary, chartColors.teal, chartColors.primaryLight, chartColors.sky] }] }, options: pieDoughnutOptions });
             }
-            if (!window.myCharts.profileTimeChart) {
+             if (!window.myCharts.profileTimeChart) {
                 const ctx = document.getElementById('profileTimeChart').getContext('2d');
                 window.myCharts.profileTimeChart = new Chart(ctx, { type: 'bar', data: { labels: ['10分以内', '10-30分', '30-60分', '60-90分', '90分以上'], datasets: [{ label: '構成比', data: [15, 40, 30, 10, 5], backgroundColor: chartColors.primaryLight, borderWidth: 0 }] }, options: { ...barDefaultOptions, plugins: { legend: { display: false } } } }); // borderWidth 0
             }
-            if (!window.myCharts.profilePlanChart) {
+             if (!window.myCharts.profilePlanChart) {
                 const ctx = document.getElementById('profilePlanChart').getContext('2d');
                 window.myCharts.profilePlanChart = new Chart(ctx, { type: 'pie', data: { labels: ['映画のみ', '後に飲食等', '前に飲食等', 'その他'], datasets: [{ data: [40, 35, 20, 5], backgroundColor: [chartColors.primary, chartColors.purple, chartColors.sky, chartColors.gray] }] }, options: pieDoughnutOptions });
             }
-            if (!window.myCharts.profileTimeSlotChart) {
+             if (!window.myCharts.profileTimeSlotChart) {
                 const ctx = document.getElementById('profileTimeSlotChart').getContext('2d');
                 window.myCharts.profileTimeSlotChart = new Chart(ctx, { type: 'bar', data: { labels: ['平日午前', '平日午後', '平日夜', '休日午前', '休日午後', '休日夜'], datasets: [{ label: '来場比率', data: [5, 10, 20, 15, 30, 20], backgroundColor: chartColors.primaryLight }] }, options: { ...barDefaultOptions, plugins: { legend: { display: false } } } });
             }
         }
 
         function initLoyaltyCharts() {
-            if (!window.myCharts.loyaltyShareChart) {
+             if (!window.myCharts.loyaltyShareChart) {
                 const ctx = document.getElementById('loyaltyShareChart').getContext('2d');
                 window.myCharts.loyaltyShareChart = new Chart(ctx, { type: 'bar', data: { labels: ['TOHO', 'イオン', 'UC', '109', 'MOVIX', 'Tジョイ', '他', '未定'], datasets: [{ label: 'シェア', data: [30, 20, 15, 8, 7, 5, 5, 10], backgroundColor: chartColors.primary }] }, options: { ...barDefaultOptions, plugins: { legend: { display: false } } } });
             }
@@ -882,11 +901,11 @@
 
         function initRevenueCharts() {
             // Ranking for Q15 is handled via HTML list
-            if (!window.myCharts.revenueTimingChart) {
+             if (!window.myCharts.revenueTimingChart) {
                 const ctx = document.getElementById('revenueTimingChart').getContext('2d');
                 window.myCharts.revenueTimingChart = new Chart(ctx, { type: 'pie', data: { labels: ['当日', '2-3日前', '1週間前', 'それ以上前'], datasets: [{ data: [30, 40, 20, 10], backgroundColor: [chartColors.sky, chartColors.primary, chartColors.primaryLight, chartColors.gray] }] }, options: pieDoughnutOptions });
             }
-            if (!window.myCharts.revenuePushChart) {
+             if (!window.myCharts.revenuePushChart) {
                 const ctx = document.getElementById('revenuePushChart').getContext('2d');
                 window.myCharts.revenuePushChart = new Chart(ctx, { type: 'bar', data: { labels: ['SNS口コミ', '友人誘い', '時間空き', '特典', '今日しか'], datasets: [{ label: '要因', data: [40, 30, 15, 10, 5], backgroundColor: chartColors.purple }] }, options: { ...barHorizontalDefaultOptions, plugins: { legend: { display: false } } } });
             }
@@ -901,7 +920,7 @@
                 const ctx = document.getElementById('issuesMannerRankChart').getContext('2d');
                 window.myCharts.issuesMannerRankChart = new Chart(ctx, { type: 'bar', data: { labels: ['おしゃべり', 'スマホ光', '座席キック', '飲食音/匂'], datasets: [{ label: '懸念度', data: [65, 50, 30, 20], backgroundColor: chartColors.negative }] }, options: { ...barHorizontalDefaultOptions, plugins: { legend: { display: false } } } });
             }
-            if (!window.myCharts.issuesGenreRankChart) {
+             if (!window.myCharts.issuesGenreRankChart) {
                 const ctx = document.getElementById('issuesGenreRankChart').getContext('2d');
                 window.myCharts.issuesGenreRankChart = new Chart(ctx, { type: 'bar', data: { labels: ['アクション', 'SF/ファンタジー', 'アニメ', 'ミュージカル', 'サスペンス'], datasets: [{ label: '観たい度', data: [60, 58, 45, 30, 25], backgroundColor: chartColors.teal }] }, options: { ...barHorizontalDefaultOptions, plugins: { legend: { display: false } } } });
             }
@@ -945,7 +964,7 @@
                         chartInstance.destroy();
                     }
                 });
-                // Clear chart references for the pane (optional but good practice)
+                // Clear chart references for the pane
                  const chartPrefix = paneId.replace('pane-', '');
                  Object.keys(window.myCharts).forEach(key => {
                     if (key.toLowerCase().startsWith(chartPrefix.toLowerCase())) {
@@ -979,7 +998,7 @@
 
                         // Initialize charts for the newly activated pane
                         switch(tab.id) {
-                            case 'tab-kpi': // Updated ID based on HTML
+                            case 'tab-kpi':
                                 initKpiCharts();
                                 break;
                             case 'tab-profile':
@@ -994,7 +1013,7 @@
                             case 'tab-issues':
                                 initIssuesCharts();
                                 break;
-                             case 'tab-works': // Added Works tab
+                             case 'tab-works':
                                 initWorksCharts();
                                 break;
                         }
